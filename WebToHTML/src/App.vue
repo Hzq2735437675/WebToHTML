@@ -2,6 +2,7 @@
   <div class="app-container">
     <!-- 模块展示面板 -->
     <div class="modules-panel">
+      <el-switch v-model="isPageDrag" active-text="开启拖拽" inactive-text="关闭拖拽" />
       <draggable
         v-model="modules"
         :group="{ name: 'modules', pull: 'clone', put: false }"
@@ -20,13 +21,17 @@
         v-model="canvasModules"
         :group="{ name: 'modules', pull: false, put: true }"
         item-key="id"
-        class="draggableHtml"
+        class="draggableHtml canvas-panel-box"
         @end="updatePreview"
+        v-show="isPageDrag"
       >
         <template #item="{ element }">
           <div v-html="generateHTML(element.json.html,element.idx)"></div>
         </template>
       </draggable>
+
+      <!-- html效果查看页面 -->
+      <div class="canvas-panel-box" v-html='monacoEditorHtml' v-show="!isPageDrag"></div>
     </div>
 
     <!-- 代码展示区域 -->
@@ -36,8 +41,8 @@
           <MonacoEditor
             :key="index"
             :language="tab.language"
-            :value="tab.value"
-            @input="tab.updateMethod"
+            :codeValue="tab.codeValue"
+            @updataCode="updateMethod($event)"
           />
         </el-tab-pane>
       </el-tabs>
@@ -59,7 +64,7 @@ const pretty = (json) => {
 const modules = ref([
   { id: 1, name: 'Banner', json: { 
     type: 'banner', 
-    html: "<div class='banner'><img src='https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0' alt='{{title}}'><h1>这是风景图片</h1></div>", 
+    html: "<div class='banner'><img src='https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0'><h1>这是风景图片</h1></div>", 
     css: ".banner { text-align: center; } .banner img { width: 600px; }", 
     js: "document.querySelector('.banner').addEventListener('click', function() { alert('Banner clicked!'); });", 
   }},
@@ -82,28 +87,27 @@ const htmlCode = ref('');
 const cssCode = ref('');
 const jsCode = ref('');
 const activeTab = ref('html');
+const isPageDrag  = ref(true)
+const monacoEditorHtml = ref('')  //code编辑器返回的html
 
 const tabs = ref([
     {
       label: 'HTML',
       name: 'html',
       language: 'html',
-      value: htmlCode,
-      updateMethod: updateHtmlCode,
+      codeValue: htmlCode
     },
     {
       label: 'CSS',
       name: 'css',
       language: 'css',
-      value: cssCode,
-      updateMethod: updateCssCode,
+      codeValue: cssCode
     },
     {
       label: 'JavaScript',
       name: 'js',
-      language: 'javascript',
-      value: jsCode,
-      updateMethod: updateJsCode,
+      language: 'js',
+      codeValue: jsCode
     },
   ])
 
@@ -149,6 +153,7 @@ const updatePreview = () => {
   htmlCode.value = combinedHTML;
   cssCode.value = combinedCSS;
   jsCode.value = combinedJS;
+
 };
 
 
@@ -160,28 +165,60 @@ onMounted(() => {
   updatePreview();
 });
 
-function updateHtmlCode(newCode){
-  // console.log(newCode)
-  console.log(canvasModules.value)
-  // htmlCode.value = newCode;
-  // modules.value[0]
-  // canvasModules.value[1].json.html = 'aaaasdadasda'
-  // console.log( canvasModules.value)
-};
+// 更新修改后的代码
+function updateMethod(data){
+  let { type } = data
+  if(type === 'html'){
+    console.log(canvasModules.value)
+    console.log(data.parsedArray)
+   
 
-function updateCssCode(newCode){
-  // console.log(newCode)
-  // cssCode.value = newCode;
-};
+    if(data.parsedArray.length &&canvasModules.value.length){
+      for(let item of data.parsedArray){
+        let isModule = canvasModules.value.find(moduleItem=> moduleItem.idx === item.idx)
+        if(isModule && isModule.json.html !== item.htmlCode){
+          isModule.json.html = item.htmlCode
+        }
+      }
+    }
+   const combinedHTML = canvasModules.value.map(node => generateHTML(node.json.html,node.idx)).join('');
+    monacoEditorHtml.value = combinedHTML
 
-function updateJsCode(newCode){
-  // jsCode.value = newCode;
-};
+  }
+
+  if(type === 'css'){
+
+  }
+
+  if(type === 'js'){
+
+  }
+}
+
+// function updateHtmlCode(newCode){
+//   monacoEditorHtml.value = newCode
+//   console.log(canvasModules.value)
+  
+//   // htmlCode.value = newCode;
+//   // modules.value[0]
+//   // canvasModules.value[1].json.html = 'aaaasdadasda'
+//   // console.log( canvasModules.value)
+// };
+
+// function updateCssCode(newCode){
+//   // console.log(newCode)
+//   // cssCode.value = newCode;
+// };
+
+// function updateJsCode(newCode){
+//   // jsCode.value = newCode;
+// };
 
 
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+
 .app-container {
   display: flex;
   width: 100vw;
@@ -197,6 +234,13 @@ function updateJsCode(newCode){
   position: relative;
   height: 100vh;
   overflow: auto;
+  &-box{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
 
 }
 .code-panel {
@@ -210,11 +254,5 @@ function updateJsCode(newCode){
   background-color: #f9f9f9;
   cursor: pointer;
 }
-.draggableHtml {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
+
 </style>

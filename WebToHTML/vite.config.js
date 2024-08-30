@@ -25,4 +25,12 @@ export default defineConfig({
       `monaco-editor/esm/vs/editor/editor.worker`
     ], 
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        javascriptEnabled: true,
+        additionalData: '@import "./src/assets/styles/variable.scss";',
+      },
+    },
+  }
 })

@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits } from 'vue';
+import { ref,toRefs,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits } from 'vue';
   import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
   import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
   import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
@@ -22,7 +22,7 @@ const props = defineProps({
     type: String,
     default: 'javascript'
   },
-  value: {
+  codeValue: {
     type: String,
     default: ''
   },
@@ -35,7 +35,9 @@ const props = defineProps({
     default: 'calc(100vh - 55px)'
   }
 });
-const emits = defineEmits(['input'])
+
+const emits = defineEmits(['updataCode'])
+const {language,codeValue,customWidth,customHeight} = toRefs(props)
 
  // @ts-ignore
   self.MonacoEnvironment = {
@@ -58,6 +60,27 @@ const emits = defineEmits(['input'])
 
 let editor = null
 
+const parseHtmlWithIdx = (htmlContent) => {
+	const parser = new DOMParser();
+	  const doc = parser.parseFromString(htmlContent, 'text/html');
+	  const divs = doc.querySelectorAll('div[idx]');
+	  
+	  const parsedArray = Array.from(divs).map(div => {
+	    // 获取 idx 属性值
+	    const idx = div.getAttribute('idx');
+	    
+	    // 获取 div 内部的 HTML，并去除空格和换行符
+	    const htmlCode = div.innerHTML.replace(/\n\s*/g, '').trim();
+	    
+	    return {
+	      idx,
+	      htmlCode
+	    };
+	  });
+	  
+	  return parsedArray;
+};
+
 const initEditor = () => {
     nextTick(() => {
  		monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
@@ -70,8 +93,8 @@ const initEditor = () => {
 	      })
  		!editor
         ? (editor = monaco.editor.create(editorRef.value, {
-            value:  props.value, // 编辑器初始显示文字
-            language: props.language, // 语言支持自行查阅demo
+            value:  codeValue.value, // 编辑器初始显示文字
+            language: language.value, // 语言支持自行查阅demo
             automaticLayout: true, // 自适应布局
             theme: 'vs-dark', // 官方自带三种主题vs, hc-black, or vs-dark
             foldingStrategy: 'indentation', // 代码可分小段折叠
@@ -130,7 +153,18 @@ const initEditor = () => {
 
      	// 监听值的变化
       editor.onDidChangeModelContent((val) => {
-        emits('input',editor.getValue())
+        if(language.value === 'html'){
+       		const updatedHtml = editor.getValue();
+	  		const parsedArray = parseHtmlWithIdx(updatedHtml);
+        	emits('updataCode',{parsedArray,type:'html'})
+        }
+        if(language.value === 'css'){
+        	// emits('updataCode',editor.getValue(),'css')
+        }
+
+        if(language.value === 'js'){
+        	// emits('updataCode',editor.getValue(),'js')
+        }
       })
 
     })
@@ -138,9 +172,33 @@ const initEditor = () => {
 
 
 // 监听 props 的变化并更新编辑器
-watch(() => props.value, (newValue) => {
+watch(() => codeValue.value, (newValue) => {
     nextTick(() => {
-	  editor.setValue(newValue);
+    	if(language.value === 'html'){
+    	// 	let newHtmlVal = `
+					// <!DOCTYPE html>
+					// <html>
+					// <head>
+					// 	<title></title>
+					// </head>
+					// <body>
+					// ${newValue}
+					// </body>
+					// </html>
+    	// 	`
+  			editor.setValue(newValue);
+
+    	}
+
+    	if(language.value === 'css'){
+    		let newHtmlVal =newValue
+  			editor.setValue(newValue);
+    	}
+
+    	if(language.value === 'js'){
+    		let newHtmlVal = newValue
+  			editor.setValue(newHtmlVal);
+    	}
 	})
 
 });
