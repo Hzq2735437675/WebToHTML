@@ -55,6 +55,8 @@ import { ref, watch, onMounted,computed } from 'vue';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import draggable from 'vuedraggable';
 import jsBeautify from 'js-beautify';
+import { useEditorStore } from '@/store/definePiniaStore.js';
+const editorStore = useEditorStore();
 
 const pretty = (json) => {
   return jsBeautify.js_beautify(JSON.stringify(json), { indent_size: 2 });
@@ -62,19 +64,19 @@ const pretty = (json) => {
 
 // 模块数据
 const modules = ref([
-  { id: 1, name: 'Banner', json: { 
+  {  name: 'Banner', json: { 
     type: 'banner', 
     html: "<div class='banner'><img src='https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0'><h1>这是风景图片</h1></div>", 
     css: ".banner { text-align: center; } .banner img { width: 600px; }", 
     js: "document.querySelector('.banner').addEventListener('click', function() { alert('Banner clicked!'); });", 
   }},
-  { id: 2, name: 'Header', json: { 
+  {  name: 'Header', json: { 
     type: 'header', 
     html: "<header class='header'><h1>我是标题</h1></header>", 
     css: ".header { font-size: 24px; color: blue; }", 
     js: "", 
   }},
-  { id: 3, name: 'Footer', json: { 
+  {  name: 'Footer', json: { 
     type: 'footer', 
     html: "<footer class='footer'><p>我是页脚</p></footer>", 
     css: ".footer { text-align: center; color: #aaa; }", 
@@ -111,7 +113,9 @@ const tabs = ref([
     },
   ])
 
-const cloneModule = (module) => ({ ...module });
+// const cloneModule = (module) => ({ ...module });
+
+const cloneModule = (module) => JSON.parse(JSON.stringify(module));
 
 const generateHTML = (html,idx) => {
   let newHtml =   `
@@ -126,11 +130,27 @@ const generateHTML = (html,idx) => {
 const updatePreview = () => {
   canvasModules.value.forEach((item,index)=>{
     item.idx = index.toString()
+    item.id = index + 1
   })
   const combinedHTML = canvasModules.value.map(node => generateHTML(node.json.html,node.idx)).join('');
 
-  const combinedCSS = canvasModules.value.map(node => node.json.css).join('\n');
-  const combinedJS = canvasModules.value.map(node => node.json.js).join('\n');
+  // 使用 Set 存储唯一的 CSS 和 JS
+  const uniqueCSS = new Set();
+  const uniqueJS = new Set();
+
+  // 遍历 canvasModules，添加唯一的 CSS 和 JS
+  canvasModules.value.forEach(node => {
+    if (node.json.css) {
+      uniqueCSS.add(node.json.css);
+    }
+    if (node.json.js) {
+      uniqueJS.add(node.json.js);
+    }
+  });
+
+  // 将 Set 转换为字符串，确保每个样式和脚本只添加一次
+  const combinedCSS = Array.from(uniqueCSS).join('\n');
+  const combinedJS = Array.from(uniqueJS).join('\n');
 
   // 查找是否已经存在带有特定 ID 的 <style> 元素
   let styleElement = document.getElementById('custom-styles');
@@ -153,13 +173,17 @@ const updatePreview = () => {
   htmlCode.value = combinedHTML;
   cssCode.value = combinedCSS;
   jsCode.value = combinedJS;
-
 };
 
 
 
 // 监听 canvasModules 变化并更新右侧代码面板
-watch(canvasModules, updatePreview, { deep: true });
+watch(canvasModules, (n,o) => {
+  if (!editorStore.isUpdatingFromEditor) {
+    updatePreview();
+  }
+  editorStore.setIsUpdatingFromEditor(false);
+}, { deep: true });
 
 onMounted(() => {
   updatePreview();
@@ -169,10 +193,6 @@ onMounted(() => {
 function updateMethod(data){
   let { type } = data
   if(type === 'html'){
-    console.log(canvasModules.value)
-    console.log(data.parsedArray)
-   
-
     if(data.parsedArray.length &&canvasModules.value.length){
       for(let item of data.parsedArray){
         let isModule = canvasModules.value.find(moduleItem=> moduleItem.idx === item.idx)
@@ -183,37 +203,19 @@ function updateMethod(data){
     }
    const combinedHTML = canvasModules.value.map(node => generateHTML(node.json.html,node.idx)).join('');
     monacoEditorHtml.value = combinedHTML
-
   }
 
   if(type === 'css'){
-
+  // const combinedCSS = Array.from(uniqueCSS).join('\n');
+  let styleElement = document.getElementById('custom-styles');
+  // 
+    console.log(data.cssCodeVal)
   }
 
   if(type === 'js'){
 
   }
 }
-
-// function updateHtmlCode(newCode){
-//   monacoEditorHtml.value = newCode
-//   console.log(canvasModules.value)
-  
-//   // htmlCode.value = newCode;
-//   // modules.value[0]
-//   // canvasModules.value[1].json.html = 'aaaasdadasda'
-//   // console.log( canvasModules.value)
-// };
-
-// function updateCssCode(newCode){
-//   // console.log(newCode)
-//   // cssCode.value = newCode;
-// };
-
-// function updateJsCode(newCode){
-//   // jsCode.value = newCode;
-// };
-
 
 </script>
 

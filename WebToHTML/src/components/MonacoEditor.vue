@@ -6,13 +6,15 @@
 
 <script setup>
 import { ref,toRefs,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits } from 'vue';
-  import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-  import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
-  import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
-  import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
-  import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-  import * as monaco from 'monaco-editor'
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import * as monaco from 'monaco-editor'
 
+import { useEditorStore } from '@/store/definePiniaStore.js';
+const editorStore = useEditorStore();
 
 const editorRef = ref(null);
 const editorInstance = ref(null);
@@ -156,14 +158,18 @@ const initEditor = () => {
         if(language.value === 'html'){
        		const updatedHtml = editor.getValue();
 	  		const parsedArray = parseHtmlWithIdx(updatedHtml);
+
+	  		editorStore.setIsUpdatingFromEditor(true);
         	emits('updataCode',{parsedArray,type:'html'})
         }
         if(language.value === 'css'){
-        	// emits('updataCode',editor.getValue(),'css')
+        	emits('updataCode','css')
+        	emits('updataCode',{cssCodeVal:editor.getValue(),type:'css'})
+
         }
 
         if(language.value === 'js'){
-        	// emits('updataCode',editor.getValue(),'js')
+        	emits('updataCode',{jsCodeVal:editor.getValue(),type:'js'})
         }
       })
 
@@ -187,7 +193,6 @@ watch(() => codeValue.value, (newValue) => {
 					// </html>
     	// 	`
   			editor.setValue(newValue);
-
     	}
 
     	if(language.value === 'css'){
