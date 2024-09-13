@@ -65,13 +65,10 @@ window.customScriptManager = {
 import { ref, watch, onMounted,computed } from 'vue';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import draggable from 'vuedraggable';
-import jsBeautify from 'js-beautify';
 import { useEditorStore } from '@/store/definePiniaStore.js';
 const editorStore = useEditorStore();
 
-const pretty = (json) => {
-  return jsBeautify.js_beautify(JSON.stringify(json), { indent_size: 2 });
-};
+
 
 // 模块数据
 const modules = ref([
@@ -83,14 +80,10 @@ const modules = ref([
       const bannerList = [
       'https://ts1.cn.mm.bing.net/th/id/R-C.11a2495a8d154cf40998974a49e1e6df?rik=xKzl5aYXBVDq%2fA&riu=http%3a%2f%2fseopic.699pic.com%2fphoto%2f50073%2f0972.jpg_wh1200.jpg&ehk=g9IpqEmyB%2frg%2bdm0GXVmLTRsGDi8UqqH%2fzb85ivuP9Q%3d&risl=&pid=ImgRaw&r=0',
       'https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0'
-      ]
-      
-      function showImage(index) {
+      ]function showImage(index) {
         const banner = document.querySelector('#bannerImg');
         banner.src = bannerList[index];
-      }
-
-      // 定时器实现自动轮播
+      }// 定时器实现自动轮播
       setInterval(() => {
         const banner = document.querySelector('#bannerImg');
         let currentIndex = bannerList.indexOf(banner.src);
@@ -98,7 +91,7 @@ const modules = ref([
         showImage(nextIndex);
       }, 1000);
 
-    // 初始化显示第一张图片
+                    // 初始化显示第一张图片
       showImage(0);
     `, 
   }},
@@ -106,13 +99,13 @@ const modules = ref([
     type: 'header', 
     html: "<header class='header'><h1>我是标题</h1></header>", 
     css: ".header { font-size: 24px; color: blue; }", 
-    js: "console.log(111111)", 
+    js: "", 
   }},
   {  name: 'Footer', json: { 
     type: 'footer', 
     html: "<footer class='footer'><p>我是页脚</p></footer>", 
     css: ".footer { text-align: center; color: #aaa; }", 
-    js: "console.log(222222)", 
+    js: "", 
   }}
 ]);
 
@@ -139,8 +132,8 @@ const tabs = ref([
     },
     {
       label: 'JavaScript',
-      name: 'js',
-      language: 'js',
+      name: 'javascript',
+      language: 'javascript',
       codeValue: jsCode
     },
   ])
@@ -260,7 +253,7 @@ function updateMethod(data){
     return
   }
 
-  if(type === 'js'){
+  if(type === 'javascript'){
     // 生成唯一ID
     const scriptId = 'custom-script-' + Date.now();
 
