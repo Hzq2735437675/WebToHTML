@@ -49,8 +49,19 @@
     </div>
   </div>
 </template>
+<script type="text/javascript">
+  // 在 script setup 外部定义这个全局对象
+window.customScriptManager = {
+  currentId: null,
+  timers: [],
+  cleanup: () => {},
+  isInitialized: false
+};
+
+</script>
 
 <script setup>
+
 import { ref, watch, onMounted,computed } from 'vue';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import draggable from 'vuedraggable';
@@ -66,21 +77,42 @@ const pretty = (json) => {
 const modules = ref([
   {  name: 'Banner', json: { 
     type: 'banner', 
-    html: "<div class='banner'><img src='https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0'><h1>这是风景图片</h1></div>", 
+    html: "<div class='banner'><img id='bannerImg' src=''><h1>这是风景图片</h1></div>", 
     css: ".banner { text-align: center; } .banner img { width: 600px; }", 
-    js: "document.querySelector('.banner').addEventListener('click', function() { alert('Banner clicked!'); });", 
+     js: `
+      const bannerList = [
+      'https://ts1.cn.mm.bing.net/th/id/R-C.11a2495a8d154cf40998974a49e1e6df?rik=xKzl5aYXBVDq%2fA&riu=http%3a%2f%2fseopic.699pic.com%2fphoto%2f50073%2f0972.jpg_wh1200.jpg&ehk=g9IpqEmyB%2frg%2bdm0GXVmLTRsGDi8UqqH%2fzb85ivuP9Q%3d&risl=&pid=ImgRaw&r=0',
+      'https://ts1.cn.mm.bing.net/th/id/R-C.f688e3cb280f908d5644557baae0ec5d?rik=1mLfzYhX4x7SuQ&riu=http%3a%2f%2fhzyly.com%2fupload%2f201908%2f26%2f201908261930501050.jpg&ehk=1xjEHsYoxq5Zuyr0US9qR%2bDj0cqyOdRDX8E10DFx4%2bU%3d&risl=&pid=ImgRaw&r=0'
+      ]
+      
+      function showImage(index) {
+        const banner = document.querySelector('#bannerImg');
+        banner.src = bannerList[index];
+      }
+
+      // 定时器实现自动轮播
+      setInterval(() => {
+        const banner = document.querySelector('#bannerImg');
+        let currentIndex = bannerList.indexOf(banner.src);
+        let nextIndex = (currentIndex + 1) % bannerList.length;
+        showImage(nextIndex);
+      }, 1000);
+
+    // 初始化显示第一张图片
+      showImage(0);
+    `, 
   }},
   {  name: 'Header', json: { 
     type: 'header', 
     html: "<header class='header'><h1>我是标题</h1></header>", 
     css: ".header { font-size: 24px; color: blue; }", 
-    js: "", 
+    js: "console.log(111111)", 
   }},
   {  name: 'Footer', json: { 
     type: 'footer', 
     html: "<footer class='footer'><p>我是页脚</p></footer>", 
     css: ".footer { text-align: center; color: #aaa; }", 
-    js: "", 
+    js: "console.log(222222)", 
   }}
 ]);
 
@@ -154,25 +186,41 @@ const updatePreview = () => {
 
   // 查找是否已经存在带有特定 ID 的 <style> 元素
   let styleElement = document.getElementById('custom-styles');
+  
   if (!styleElement) {
     styleElement = document.createElement('style');
     styleElement.id = 'custom-styles';
     document.head.appendChild(styleElement);
   }
 
-  // 生成新的 CSS
-  const existingCSS = styleElement.textContent || '';
-  const newCSS = combinedCSS;
-  
+  // 提取 CSS 类名和 ID
+  const extractSelectors = (css) => {
+    const classSelectors = css.match(/\.[a-zA-Z0-9_-]+(?=\s*\{)/g) || [];
+    const idSelectors = css.match(/#[a-zA-Z0-9_-]+(?=\s*\{)/g) || [];
+    return new Set([...classSelectors, ...idSelectors]);
+  };
+
+  const existingSelectors = extractSelectors(cssCode.value);
+  const newSelectors = extractSelectors(combinedCSS);
+
   // 判断是否需要更新样式
-  if (existingCSS !== newCSS) {
-    styleElement.textContent = newCSS;
+  const uniqueNewCSS = combinedCSS.split('\n').filter(line => {
+    const selectorMatch = line.match(/^[.#][a-zA-Z0-9_-]+/);
+    return selectorMatch && !existingSelectors.has(selectorMatch[0]);
+  }).join('\n');
+
+  
+
+  htmlCode.value = combinedHTML;
+  
+  if (uniqueNewCSS) {
+    styleElement.textContent += uniqueNewCSS;
+    cssCode.value += uniqueNewCSS;
   }
 
-  // 更新代码面板
-  htmlCode.value = combinedHTML;
-  cssCode.value = combinedCSS;
-  jsCode.value = combinedJS;
+  if (combinedJS) {
+    jsCode.value = combinedJS;
+  }
 };
 
 
@@ -203,17 +251,67 @@ function updateMethod(data){
     }
    const combinedHTML = canvasModules.value.map(node => generateHTML(node.json.html,node.idx)).join('');
     monacoEditorHtml.value = combinedHTML
+    return
   }
 
   if(type === 'css'){
-  // const combinedCSS = Array.from(uniqueCSS).join('\n');
-  let styleElement = document.getElementById('custom-styles');
-  // 
-    console.log(data.cssCodeVal)
+    let styleElement = document.getElementById('custom-styles');
+    styleElement.textContent = data.cssCodeVal
+    return
   }
 
   if(type === 'js'){
+    // 生成唯一ID
+    const scriptId = 'custom-script-' + Date.now();
 
+    // 清理旧的脚本
+    if (window.customScriptManager.currentId) {
+      const oldScript = document.getElementById(window.customScriptManager.currentId);
+      if (oldScript) {
+        oldScript.remove();
+      }
+      window.customScriptManager.cleanup();
+    }
+
+    // 创建新的 script 元素
+    const scriptElement = document.createElement('script');
+    scriptElement.id = scriptId;
+
+    const wrappedJS = `
+      (function() {
+        const scriptId = '${scriptId}';
+        let intervals = [];
+
+        // 清理函数
+        window.customScriptManager.cleanup = function() {
+          intervals.forEach(interval => clearInterval(interval));
+          intervals = [];
+        };
+
+        // 包装 setInterval 函数
+        function safeSetInterval(callback, delay) {
+          const intervalId = setInterval(() => {
+            if (scriptId === window.customScriptManager.currentId) {
+              callback();
+            } else {
+              clearInterval(intervalId);
+            }
+          }, delay);
+          intervals.push(intervalId);
+          return intervalId;
+        }
+
+        // 主要的代码逻辑
+        ${data.jsCodeVal.replace(/setInterval/g, 'safeSetInterval')}
+
+        // 更新当前活动的脚本ID
+        window.customScriptManager.currentId = scriptId;
+      })();
+    `;
+
+    scriptElement.textContent = wrappedJS;
+    document.body.appendChild(scriptElement);
+    return
   }
 }
 

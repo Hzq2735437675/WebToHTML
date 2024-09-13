@@ -161,15 +161,18 @@ const initEditor = () => {
 
 	  		editorStore.setIsUpdatingFromEditor(true);
         	emits('updataCode',{parsedArray,type:'html'})
+        	return
         }
         if(language.value === 'css'){
-        	emits('updataCode','css')
+	  		editorStore.setIsUpdatingFromEditor(true);
         	emits('updataCode',{cssCodeVal:editor.getValue(),type:'css'})
-
+        	return
         }
 
         if(language.value === 'js'){
+	  		editorStore.setIsUpdatingFromEditor(true);
         	emits('updataCode',{jsCodeVal:editor.getValue(),type:'js'})
+        	return
         }
       })
 
