@@ -6,6 +6,7 @@
 
 <script setup>
 import { ref,toRefs,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits } from 'vue';
+import { ElMessage } from 'element-plus'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
@@ -203,7 +204,33 @@ const initEditor = () => {
           }))
         : editor.setValue('')
 
-     	// 监听值的变化
+     	// 创建一个防抖的 emits 函数
+	    const debouncedEmit = debounce((value, type) => {
+
+    	// 获取当前模型的所有标记（包括错误和警告）
+	    const model = editor.getModel();
+	    const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+	       // 过滤出错误级别的标记
+	    const errors = markers.filter(marker => marker.severity === monaco.MarkerSeverity.Error);
+
+	    if (errors.length > 0) {
+	       // 如果有错误，显示第一个错误信息
+	       const firstError = errors[0];
+	       const errorMessage = `${type.toLowerCase()} 内容在第 ${firstError.startLineNumber} 行发生错误`;
+	       // 显示错误消息，这里你可以使用你喜欢的任何方式来显示错误
+	       // 例如，使用 element-plus 的 ElMessage
+	       ElMessage.error(errorMessage);
+	       return;
+	    }
+
+	      editorStore.setIsUpdatingFromEditor(true);
+	      emits('updataCode', { 
+	        [type === 'javascript' ? 'jsCodeVal' : 
+	         type === 'css' ? 'cssCodeVal' : 'parsedArray']: 
+	         type === 'html' ? parseHtmlWithIdx(value) : value,
+	        type: type
+	      });
+	    }, 1000); // 1秒的延迟
       	// 监听编辑器内容变化
 	    editor.onDidChangeModelContent((event) => {
 	      const currentValue = editor.getValue();
@@ -214,13 +241,8 @@ const initEditor = () => {
 	        editor.setPosition(position);
 	      }
 
-	      editorStore.setIsUpdatingFromEditor(true);
-	      emits('updataCode', { 
-	        [language.value === 'javascript' ? 'jsCodeVal' : 
-	         language.value === 'css' ? 'cssCodeVal' : 'parsedArray']: 
-	         language.value === 'html' ? parseHtmlWithIdx(formattedCode) : formattedCode,
-	        type: language.value
-	      });
+      		// 使用防抖的 emit 函数
+      		debouncedEmit(formattedCode, language.value);
 	    });
     })
 }
@@ -237,6 +259,17 @@ const formatCode = (code, lang) => {
     default:
       return code;
   }
+};
+
+// 在 setup 函数顶部添加这个辅助函数
+const debounce = (fn, delay) => {
+  let timer = null;
+  return function (...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+    }, delay);
+  };
 };
 
 
