@@ -36,12 +36,13 @@
 
     <!-- 代码展示区域 -->
     <div class="code-panel">
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" @tab-change='changeActiveType'>
         <el-tab-pane v-for="(tab, index) in tabs" :key="tab.name" :label="tab.label" :name="tab.name">
           <MonacoEditor
             :key="index"
             :language="tab.language"
             :codeValue="tab.codeValue"
+            ref="MonacoEditorRef"
             @updataCode="updateMethod($event)"
           />
         </el-tab-pane>
@@ -99,13 +100,13 @@ const modules = ref([
     type: 'header', 
     html: "<header class='header'><h1>我是标题</h1></header>", 
     css: ".header { font-size: 24px; color: blue; }", 
-    js: "", 
+    js: "console.log(7777777)", 
   }},
   {  name: 'Footer', json: { 
     type: 'footer', 
     html: "<footer class='footer'><p>我是页脚</p></footer>", 
     css: ".footer { text-align: center; color: #aaa; }", 
-    js: "", 
+    js: "console.log(323424)", 
   }}
 ]);
 
@@ -137,8 +138,16 @@ const tabs = ref([
       codeValue: jsCode
     },
   ])
+const MonacoEditorRef = ref(null)
 
-// const cloneModule = (module) => ({ ...module });
+// 监听 canvasModules 变化并更新右侧代码面板
+watch(canvasModules, (n,o) => {
+  if (!editorStore.isUpdatingFromEditor) {
+    updatePreview();
+  }
+  editorStore.setIsUpdatingFromEditor(false);
+}, { deep: true });
+
 
 const cloneModule = (module) => JSON.parse(JSON.stringify(module));
 
@@ -218,18 +227,6 @@ const updatePreview = () => {
 
 
 
-// 监听 canvasModules 变化并更新右侧代码面板
-watch(canvasModules, (n,o) => {
-  if (!editorStore.isUpdatingFromEditor) {
-    updatePreview();
-  }
-  editorStore.setIsUpdatingFromEditor(false);
-}, { deep: true });
-
-onMounted(() => {
-  updatePreview();
-});
-
 // 更新修改后的代码
 function updateMethod(data){
   let { type } = data
@@ -301,12 +298,21 @@ function updateMethod(data){
         window.customScriptManager.currentId = scriptId;
       })();
     `;
-
     scriptElement.textContent = wrappedJS;
     document.body.appendChild(scriptElement);
     return
   }
 }
+
+function changeActiveType(e){
+  // if(e === 'javascript'){
+  //  MonacoEditorRef.value[2].updateEditorOptions()
+  // }
+}
+
+onMounted(() => {
+  updatePreview();
+});
 
 </script>
 

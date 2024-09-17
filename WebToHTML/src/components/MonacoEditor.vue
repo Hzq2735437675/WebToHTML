@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref,toRefs,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits } from 'vue';
+import { ref,toRefs,nextTick,onMounted, onBeforeUnmount, watch, defineProps, defineEmits,defineExpose } from 'vue';
 import { ElMessage } from 'element-plus'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
@@ -41,6 +41,7 @@ const props = defineProps({
 });
 
 const emits = defineEmits(['updataCode'])
+
 const {language,codeValue,customWidth,customHeight} = toRefs(props)
 
  // @ts-ignore
@@ -204,46 +205,47 @@ const initEditor = () => {
           }))
         : editor.setValue('')
 
-     	// 创建一个防抖的 emits 函数
-	    const debouncedEmit = debounce((value, type) => {
+     	
+      	// 监听编辑器内容变化
+	    editor.onDidChangeModelContent((event) => {
+      		// 使用防抖的 emit 函数
+      		debouncedEmit(language.value);
+	    });
+
+	    // 创建一个防抖的 emits 函数
+	    const debouncedEmit = debounce((type) => {
 
     	// 获取当前模型的所有标记（包括错误和警告）
 	    const model = editor.getModel();
 	    const markers = monaco.editor.getModelMarkers({ resource: model.uri });
 	       // 过滤出错误级别的标记
 	    const errors = markers.filter(marker => marker.severity === monaco.MarkerSeverity.Error);
+		    if (errors.length > 0) {
+		       // 如果有错误，显示第一个错误信息
+		       const firstError = errors[0];
+		       const errorMessage = `${type.toLowerCase()} 内容在第 ${firstError.startLineNumber} 行发生错误`;
+		       // 显示错误消息，这里你可以使用你喜欢的任何方式来显示错误
+		       // 例如，使用 element-plus 的 ElMessage
+		       ElMessage.error(errorMessage);
+		       return
+		    }
 
-	    if (errors.length > 0) {
-	       // 如果有错误，显示第一个错误信息
-	       const firstError = errors[0];
-	       const errorMessage = `${type.toLowerCase()} 内容在第 ${firstError.startLineNumber} 行发生错误`;
-	       // 显示错误消息，这里你可以使用你喜欢的任何方式来显示错误
-	       // 例如，使用 element-plus 的 ElMessage
-	       ElMessage.error(errorMessage);
-	       return;
-	    }
+			const currentValue = editor.getValue();
+			const formattedCode = formatCode(currentValue, type);
+			if (formattedCode !== currentValue) {
+		        const position = editor.getPosition();
+		        editor.setValue(formattedCode);
+		        editor.setPosition(position);
+	      	}
 
-	      editorStore.setIsUpdatingFromEditor(true);
-	      emits('updataCode', { 
-	        [type === 'javascript' ? 'jsCodeVal' : 
-	         type === 'css' ? 'cssCodeVal' : 'parsedArray']: 
-	         type === 'html' ? parseHtmlWithIdx(value) : value,
-	        type: type
-	      });
+      		editorStore.setIsUpdatingFromEditor(true);
+      		emits('updataCode', { 
+    			[type === 'javascript' ? 'jsCodeVal' : 
+     			type === 'css' ? 'cssCodeVal' : 'parsedArray']: 
+     			type === 'html' ? parseHtmlWithIdx(formattedCode) : formattedCode,
+        		type: type
+      		});
 	    }, 1000); // 1秒的延迟
-      	// 监听编辑器内容变化
-	    editor.onDidChangeModelContent((event) => {
-	      const currentValue = editor.getValue();
-	      const formattedCode = formatCode(currentValue, language.value);
-	      if (formattedCode !== currentValue) {
-	        const position = editor.getPosition();
-	        editor.setValue(formattedCode);
-	        editor.setPosition(position);
-	      }
-
-      		// 使用防抖的 emit 函数
-      		debouncedEmit(formattedCode, language.value);
-	    });
     })
 }
 
@@ -272,6 +274,12 @@ const debounce = (fn, delay) => {
   };
 };
 
+// 修改编辑器配置
+const updateEditorOptions = ()=>{
+	if(language.value === 'javascript'){
+		editor.updateOptions({ readOnly: false});
+	}
+}
 
 // 监听 props 的变化并更新编辑器
 watch(() => codeValue.value, (newValue) => {
@@ -280,17 +288,19 @@ watch(() => codeValue.value, (newValue) => {
 	    editor.setValue(formattedCode);
 	    editor.updateOptions({ readOnly: !formattedCode.trim() });
 	})
-
 }
 );
 
 onMounted(() => {
-initEditor()
+	initEditor()
 });
 
 onBeforeUnmount(() => {
   editor.dispose()
 });
+
+defineExpose({updateEditorOptions})
+
 </script>
 
 <style scoped>
