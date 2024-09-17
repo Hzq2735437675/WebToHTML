@@ -160,7 +160,7 @@ const initEditor = () => {
               enabled: false,
             },
             readOnly: true, // 只读
-            fontSize: 16, // 字体大小
+            fontSize: 12, // 字体大小
             scrollBeyondLastLine: false, // 取消代码后面一大段空白
             overviewRulerBorder: false, // 不要滚动条的边框
             wordWrap: 'on', // 自动换行

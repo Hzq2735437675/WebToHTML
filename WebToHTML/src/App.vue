@@ -324,12 +324,12 @@ onMounted(() => {
   justify-content: space-between;
 }
 .modules-panel {
-  padding: 10px 60px;
-  margin: 0 10px;
+  padding: 10px 15px;
+  margin-left:10px;
   border-right: 1px solid #ddd;
 }
 .canvas-panel {
-  width: 1200px;
+  flex:1 0;
   position: relative;
   height: 100vh;
   overflow: auto;
@@ -343,7 +343,7 @@ onMounted(() => {
 
 }
 .code-panel {
-  flex: 1 0;
+  width: 485px;
   padding-left: 15px;
   border-left: 1px solid #ddd;
 }
